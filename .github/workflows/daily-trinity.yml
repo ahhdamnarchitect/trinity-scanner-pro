@@ -2,7 +2,7 @@ name: Trinity Strategy Daily Run
 
 on:
   schedule:
-    - cron: '0 22 * * 1-5'  # 22:00 UTC = 5 PM CDT Mon-Fri
+    - cron: '15 22 * * 1-5'  # 22:00 UTC = 5 PM CDT Mon-Fri
   workflow_dispatch:
 
 jobs:
