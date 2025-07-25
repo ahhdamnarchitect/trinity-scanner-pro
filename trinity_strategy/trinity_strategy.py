@@ -11,12 +11,10 @@ from email.message import EmailMessage
 
 # --- Config ---
 TRINITY_WINDOW_DAYS = 24
-ALERT_LOOKBACK_DAYS = 30
 PRICE_LIMIT = 20
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 ALL_HIGHS_DIR = os.path.join(DATA_DIR, "all_new_highs")
 TRINITY_DIR = os.path.join(DATA_DIR, "trinity_candidates")
-LOG_FILE = os.path.join(DATA_DIR, "trinity_alert_log.csv")
 
 os.makedirs(ALL_HIGHS_DIR, exist_ok=True)
 os.makedirs(TRINITY_DIR, exist_ok=True)
@@ -72,38 +70,6 @@ def detect_trinity(all_files, today_df):
     return today_df
 
 
-def filter_recently_alerted(df_today):
-    """Filter out tickers alerted in the last ALERT_LOOKBACK_DAYS."""
-    if not os.path.exists(LOG_FILE):
-        return df_today, []
-
-    try:
-        log_df = pd.read_csv(LOG_FILE)
-        log_df['Date'] = pd.to_datetime(log_df['Date'])
-        recent_cutoff = datetime.now() - timedelta(days=ALERT_LOOKBACK_DAYS)
-        recent_log = log_df[log_df['Date'] >= recent_cutoff]
-        recently_alerted = set(recent_log['Ticker'])
-        filtered_df = df_today[~df_today['Ticker'].isin(recently_alerted)]
-        return filtered_df, list(recently_alerted)
-    except Exception as e:
-        print("Error reading alert log:", e)
-        return df_today, []
-
-
-def update_alert_log(tickers):
-    if not tickers:
-        return
-    today = datetime.now().strftime("%Y-%m-%d")
-    new_entries = pd.DataFrame({"Ticker": tickers, "Date": today})
-    if os.path.exists(LOG_FILE):
-        log_df = pd.read_csv(LOG_FILE)
-        combined_df = pd.concat([log_df, new_entries])
-    else:
-        combined_df = new_entries
-    combined_df.to_csv(LOG_FILE, index=False)
-    print("📝 Updated trinity_alert_log.csv")
-
-
 def send_email(subject, body, attachments=None):
     attachments = attachments or []
     if not (EMAIL_SENDER and EMAIL_PASSWORD and EMAIL_RECEIVER):
@@ -122,6 +88,10 @@ def send_email(subject, body, attachments=None):
                 msg.add_attachment(f.read(), maintype="application", subtype="octet-stream", filename=os.path.basename(file))
         except Exception as e:
             print(f"❌ Failed to attach file: {file}", e)
+
+    print("EMAIL_SENDER is set:", EMAIL_SENDER is not None, file=sys.stderr)
+    print("EMAIL_PASSWORD is set:", EMAIL_PASSWORD is not None, file=sys.stderr)
+    print("EMAIL_RECEIVER is set:", EMAIL_RECEIVER is not None, file=sys.stderr)
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
@@ -167,26 +137,23 @@ def main():
     all_past_files = sorted(glob.glob(os.path.join(ALL_HIGHS_DIR, "all_new_highs_*.csv")))
     df_trinity = detect_trinity(all_past_files, df_all)
 
-    # Filter out recent alerts
-    df_final, recently_alerted = filter_recently_alerted(df_trinity[df_trinity['Trinity']])
-    tickers_today = df_final['Ticker'].tolist()
-
-    trinity_file = os.path.join(TRINITY_DIR, f"trinity_candidates_{today_str}.csv")
-    df_final.to_csv(trinity_file, index=False)
-    print(f"📁 Saved Trinity candidates to: {trinity_file}")
-
+    trinity_count = df_trinity['Trinity'].sum()
     subject = f"📈 Trinity Scan Results – {today_str}"
-    if not tickers_today:
-        body = "No *new* Trinity candidates found today."
-        if recently_alerted:
-            body += "\n\nRecently alerted tickers skipped:\n" + ", ".join(recently_alerted)
-        body += f"\n\nTotal highs scanned: {len(df_all)}"
+
+    if trinity_count == 0:
+        body = f"No Trinity candidates found today.\n\nTotal highs scanned: {len(df_all)}"
         send_email(subject, body)
     else:
-        body = f"{len(tickers_today)} new Trinity candidate(s): {', '.join(tickers_today)}\n\nSee attached file."
-        send_email(subject, body, attachments=[trinity_file])
-        update_alert_log(tickers_today)
+        # Save Trinity candidates only if any found
+        trinity_file = os.path.join(TRINITY_DIR, f"trinity_candidates_{today_str}.csv")
+        df_trinity[df_trinity['Trinity']].to_csv(trinity_file, index=False)
+        print(f"📁 Saved Trinity candidates to: {trinity_file}")
 
+        tickers = ", ".join(df_trinity[df_trinity['Trinity']]['Ticker'].tolist())
+        body = f"{trinity_count} Trinity candidate(s) found: {tickers}\n\nSee attached file for details."
+        send_email(subject, body, attachments=[trinity_file])
+
+    # Cleanup old files
     cleanup_old_files(ALL_HIGHS_DIR, days_to_keep=60)
     cleanup_old_files(TRINITY_DIR, days_to_keep=180)
 
