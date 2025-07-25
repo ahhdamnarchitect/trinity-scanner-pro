@@ -50,7 +50,6 @@ jobs:
           else
             echo "ℹ️ No all highs files to add."
           fi
-          exit $added
 
       - name: Commit changes if any
         run: |
