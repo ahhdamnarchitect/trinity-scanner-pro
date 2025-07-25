@@ -37,9 +37,12 @@ def get_today_highs(url):
             cells = row.find_all("td")
             if len(cells) > 8:
                 try:
-                    rows.append({"Ticker": cells[1].text.strip(), "Price": float(cells[8].text)})
+                    rows.append({
+                        "Ticker": cells[1].text.strip(),
+                        "Price": float(cells[8].text)
+                    })
                 except:
-                    pass
+                    continue
         page += 1
         time.sleep(1)
     return pd.DataFrame(rows)
@@ -80,8 +83,11 @@ def send_email(subject, body, attachments=None):
     msg["To"] = EMAIL_RECEIVER
 
     for file in attachments:
-        with open(file, "rb") as f:
-            msg.add_attachment(f.read(), maintype="application", subtype="octet-stream", filename=os.path.basename(file))
+        try:
+            with open(file, "rb") as f:
+                msg.add_attachment(f.read(), maintype="application", subtype="octet-stream", filename=os.path.basename(file))
+        except Exception as e:
+            print(f"❌ Failed to attach file: {file}", e)
 
     print("EMAIL_SENDER is set:", EMAIL_SENDER is not None, file=sys.stderr)
     print("EMAIL_PASSWORD is set:", EMAIL_PASSWORD is not None, file=sys.stderr)
@@ -111,18 +117,21 @@ def cleanup_old_files(folder, days_to_keep):
 
 
 def main():
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    print(f"📅 Running Trinity strategy for: {today_str}")
+
     nasdaq_url = f"https://finviz.com/screener.ashx?v=111&s=ta_newhigh&f=exch_nasd,sh_price_u{PRICE_LIMIT}&o=-price"
     nyse_url = f"https://finviz.com/screener.ashx?v=111&s=ta_newhigh&f=exch_nyse,sh_price_u{PRICE_LIMIT}&o=-price"
 
     df_nasdaq = get_today_highs(nasdaq_url)
     df_nyse = get_today_highs(nyse_url)
     df_all = pd.concat([df_nasdaq, df_nyse], ignore_index=True)
-    today_str = datetime.now().strftime("%Y-%m-%d")
     df_all['Date'] = today_str
 
     # Save daily highs
     all_file = os.path.join(ALL_HIGHS_DIR, f"all_new_highs_{today_str}.csv")
     df_all.to_csv(all_file, index=False)
+    print(f"📁 Saved all highs to: {all_file}")
 
     # Detect Trinity candidates
     all_past_files = sorted(glob.glob(os.path.join(ALL_HIGHS_DIR, "all_new_highs_*.csv")))
@@ -130,17 +139,17 @@ def main():
 
     trinity_file = os.path.join(TRINITY_DIR, f"trinity_candidates_{today_str}.csv")
     df_trinity[df_trinity['Trinity']].to_csv(trinity_file, index=False)
+    print(f"📁 Saved Trinity candidates to: {trinity_file}")
 
     trinity_count = df_trinity['Trinity'].sum()
-    print(f"✅ Scraped {len(df_all)} highs. Trinity candidates: {trinity_count}")
-
     subject = f"📈 Trinity Scan Results – {today_str}"
 
     if trinity_count == 0:
-        body = "No Trinity candidates found today."
+        body = f"No Trinity candidates found today.\n\nTotal highs scanned: {len(df_all)}"
         send_email(subject, body)
     else:
-        body = f"{trinity_count} Trinity candidate(s) found.\n\nSee attached file for details."
+        tickers = ", ".join(df_trinity[df_trinity['Trinity']]['Ticker'].tolist())
+        body = f"{trinity_count} Trinity candidate(s) found: {tickers}\n\nSee attached file for details."
         send_email(subject, body, attachments=[trinity_file])
 
     # Cleanup old files
