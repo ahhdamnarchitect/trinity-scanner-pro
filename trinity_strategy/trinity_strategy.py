@@ -138,10 +138,10 @@ def main():
 
     if trinity_count == 0:
         body = "No Trinity candidates found today."
-        send_email(subject, body, attachments=[trinity_file, all_file])
+        send_email(subject, body)
     else:
         body = f"{trinity_count} Trinity candidate(s) found.\n\nSee attached file for details."
-        send_email(subject, body, attachments=[trinity_file, all_file])
+        send_email(subject, body, attachments=[trinity_file])
 
     # Cleanup old files
     cleanup_old_files(ALL_HIGHS_DIR, days_to_keep=60)
