@@ -1,0 +1,47 @@
+name: Trinity Strategy Daily Run
+
+on:
+  schedule:
+    - cron: '30 21 * * 1-5'  # Runs at 5:10 PM CST (after market close, Mon–Fri)
+  workflow_dispatch:
+
+jobs:
+  run-strategy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0  # needed to push commits
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Trinity Strategy
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+        run: python trinity_strategy/trinity_strategy.py
+
+      - name: Commit and push new data files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add trinity_strategy/data/all_new_highs/*.csv
+          git add trinity_strategy/data/trinity_candidates/*.csv
+
+          if git diff --cached --quiet; then
+            echo "No new data to commit."
+          else
+            git commit -m "🔁 Daily Trinity scan results for $(date +'%Y-%m-%d')"
+            git push
+          fi
