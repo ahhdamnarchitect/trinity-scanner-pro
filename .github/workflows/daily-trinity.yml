@@ -33,21 +33,31 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Conditionally add Trinity candidate file
+      - name: Conditionally add Trinity candidate and all highs files
         run: |
+          added=0
           if ls trinity_strategy/data/trinity_candidates/*.csv 1> /dev/null 2>&1; then
             git add trinity_strategy/data/trinity_candidates/*.csv
-            echo "✅ Trinity candidate file added."
+            echo "✅ Trinity candidate files added."
+            added=1
           else
-            echo "ℹ️ No Trinity candidate file to add."
+            echo "ℹ️ No Trinity candidate files to add."
           fi
+          if ls trinity_strategy/data/all_new_highs/*.csv 1> /dev/null 2>&1; then
+            git add trinity_strategy/data/all_new_highs/*.csv
+            echo "✅ All highs files added."
+            added=1
+          else
+            echo "ℹ️ No all highs files to add."
+          fi
+          exit $added
 
       - name: Commit changes if any
         run: |
           if git diff --cached --quiet; then
             echo "ℹ️ No changes to commit."
           else
-            git commit -m "🤖 Add Trinity candidates $(date +'%Y-%m-%d')"
+            git commit -m "🤖 Add Trinity data files $(date +'%Y-%m-%d')"
             git push
             echo "✅ Changes committed and pushed."
           fi
