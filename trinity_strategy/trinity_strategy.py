@@ -128,7 +128,7 @@ def main():
     df_all = pd.concat([df_nasdaq, df_nyse], ignore_index=True)
     df_all['Date'] = today_str
 
-    # Save daily highs
+    # Save daily highs ALWAYS
     all_file = os.path.join(ALL_HIGHS_DIR, f"all_new_highs_{today_str}.csv")
     df_all.to_csv(all_file, index=False)
     print(f"📁 Saved all highs to: {all_file}")
@@ -138,6 +138,7 @@ def main():
     df_trinity = detect_trinity(all_past_files, df_all)
 
     trinity_count = df_trinity['Trinity'].sum()
+
     subject = f"📈 Trinity Scan Results – {today_str}"
 
     if trinity_count == 0:
