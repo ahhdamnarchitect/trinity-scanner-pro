@@ -6,42 +6,48 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-strategy:
+  run-trinity:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-          fetch-depth: 0  # needed to push commits
 
-      - name: Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: '3.11'
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run Trinity Strategy
+      - name: Run Trinity scanner
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
-        run: python trinity_strategy/trinity_strategy.py
+        run: python trinity_strategy/main.py
 
-      - name: Commit and push new data files
+      - name: Set up Git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git add trinity_strategy/data/all_new_highs/*.csv
-          git add trinity_strategy/data/trinity_candidates/*.csv
 
-          if git diff --cached --quiet; then
-            echo "No new data to commit."
+      - name: Conditionally add Trinity candidate file
+        run: |
+          if ls trinity_strategy/data/trinity_candidates/*.csv 1> /dev/null 2>&1; then
+            git add trinity_strategy/data/trinity_candidates/*.csv
+            echo "✅ Trinity candidate file added."
           else
-            git commit -m "🔁 Daily Trinity scan results for $(date +'%Y-%m-%d')"
+            echo "ℹ️ No Trinity candidate file to add."
+          fi
+
+      - name: Commit changes if any
+        run: |
+          if git diff --cached --quiet; then
+            echo "ℹ️ No changes to commit."
+          else
+            git commit -m "🤖 Add Trinity candidates $(date +'%Y-%m-%d')"
             git push
+            echo "✅ Changes committed and pushed."
           fi
