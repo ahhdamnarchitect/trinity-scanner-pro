@@ -66,7 +66,7 @@ def detect_trinity(all_files, today_df):
     cutoff = datetime.now() - timedelta(days=TRINITY_WINDOW_DAYS)
     recent = past[past['Date'] >= cutoff]
     counts = recent.groupby('Ticker').size()
-    today_df['Trinity'] = today_df['Ticker'].apply(lambda t: counts.get(t, 0) >= 2)
+    today_df['Trinity'] = today_df['Ticker'].apply(lambda t: counts.get(t, 0) >= 3)
     return today_df
 
 
