@@ -24,17 +24,17 @@ jobs:
       - name: Run comprehensive analysis
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python trinity_strategy/analyze_trinity_candidates.py
+        run: python trinity_strategy/generate_conversational_report.py
 
       - name: Upload analysis results
         uses: actions/upload-artifact@v4
         with:
-          name: comprehensive-analysis
-          path: comprehensive_analysis_*.json
+          name: trinity-conversational-report
+          path: trinity_conversational_report_*.txt
           retention-days: 7
 
       - name: Create analysis summary
         run: |
-          echo "## 📊 Trinity Analysis Results" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Trinity Conversational Report" >> $GITHUB_STEP_SUMMARY
           echo "Analysis completed at $(date)" >> $GITHUB_STEP_SUMMARY
-          echo "Check the artifacts tab for detailed results." >> $GITHUB_STEP_SUMMARY
+          echo "Check the artifacts tab for the conversational report." >> $GITHUB_STEP_SUMMARY

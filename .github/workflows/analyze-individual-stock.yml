@@ -33,43 +33,27 @@ jobs:
       - name: Run individual stock analysis
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TICKER: ${{ github.event.inputs.ticker }}
+          BUDGET: ${{ github.event.inputs.budget }}
         run: |
           cd trinity_strategy
           python -c "
           import sys
           sys.path.append('.')
-          from stock_analyzer import ComprehensiveStockAnalyzer
-          import json
-          from datetime import datetime
+          from generate_conversational_report import generate_individual_conversational_report
+          import os
           
-          ticker = '${{ github.event.inputs.ticker }}'.upper()
-          budget = float('${{ github.event.inputs.budget }}')
+          ticker = os.getenv('TICKER', 'AAPL').upper()
+          budget = float(os.getenv('BUDGET', '1600'))
           
-          print(f' Analyzing {ticker} with budget ${budget}...')
-          
-          analyzer = ComprehensiveStockAnalyzer(budget=budget)
-          analysis = analyzer.analyze_stock(ticker)
-          
-          if 'error' in analysis:
-              print(f'❌ Error: {analysis[\"error\"]}')
-              sys.exit(1)
-          
-          # Print formatted analysis
-          analyzer.print_analysis(analysis)
-          
-          # Save to file (in parent directory for artifact upload)
-          filename = f'../analysis_{ticker}_{datetime.now().strftime(\"%Y%m%d_%H%M%S\")}.json'
-          with open(filename, 'w') as f:
-              json.dump(analysis, f, indent=2, default=str)
-          
-          print(f'✅ Analysis saved to {filename}')
+          generate_individual_conversational_report(ticker, budget)
           "
 
       - name: Upload analysis results
         uses: actions/upload-artifact@v4
         with:
           name: stock-analysis-${{ github.event.inputs.ticker }}
-          path: analysis_*.json
+          path: individual_analysis_*.txt
           retention-days: 7
 
       - name: Create analysis summary
@@ -77,4 +61,8 @@ jobs:
           echo "## 📊 Individual Stock Analysis: ${{ github.event.inputs.ticker }}" >> $GITHUB_STEP_SUMMARY
           echo "Analysis completed at $(date)" >> $GITHUB_STEP_SUMMARY
           echo "Budget: $${{ github.event.inputs.budget }}" >> $GITHUB_STEP_SUMMARY
-          echo "Check the artifacts tab for detailed results." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Files generated:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Trading report (CSV format)" >> $GITHUB_STEP_SUMMARY
+          echo "- Detailed analysis (JSON format)" >> $GITHUB_STEP_SUMMARY
+          echo "Check the artifacts tab for results." >> $GITHUB_STEP_SUMMARY
