@@ -317,12 +317,19 @@ def main():
                     'LATE_STAGE': '🟡'
                 }.get(row['Entry_Status'], '❓')
                 
+                ticker = row['Ticker']
+                price = row['Price']
+                
                 body_parts.append(
-                    f"{status_emoji} {row['Ticker']} (${row['Price']:.2f}) - "
+                    f"{status_emoji} {ticker} (${price:.2f}) - "
                     f"{row['Entry_Status']} "
                     f"({row.get('Days_Since_Signal', 'N/A')} days, "
                     f"{row.get('Price_Move_Pct', 'N/A')}% move)"
                 )
+                
+                # Add individual analysis link
+                analysis_url = f"https://github.com/ahhdamnarchitect/trinity-scanner-pro/actions/workflows/analyze-individual-stock.yml"
+                body_parts.append(f"   📊 [Analyze {ticker}]({analysis_url})")
         
         # Show excluded candidates
         excluded_candidates = df_trinity[
@@ -341,6 +348,22 @@ def main():
                 )
         
         body_parts.append(f"\nTotal highs scanned: {len(df_all)}")
+        
+        # Add GitHub Actions links
+        body_parts.append(f"\n🔗 QUICK ACTIONS:")
+        body_parts.append(f"📊 Analyze all candidates: https://github.com/ahhdamnarchitect/trinity-scanner-pro/actions/workflows/analyze-trinity.yml")
+        body_parts.append(f"📈 View latest results: https://github.com/ahhdamnarchitect/trinity-scanner-pro/actions")
+        
+        # Add individual analysis links for actionable candidates
+        if not actionable_candidates.empty:
+            body_parts.append(f"\n🎯 INDIVIDUAL ANALYSIS:")
+            for _, row in actionable_candidates.iterrows():
+                ticker = row['Ticker']
+                analysis_url = f"https://github.com/ahhdamnarchitect/trinity-scanner-pro/actions/workflows/analyze-individual-stock.yml"
+                body_parts.append(f"📊 [Analyze {ticker}]({analysis_url})")
+        
+        body_parts.append(f"\n💡 Tip: Click any link above to run analysis with AI insights")
+        
         body = "\n".join(body_parts)
         
         send_email(subject, body, attachments=[trinity_file])
