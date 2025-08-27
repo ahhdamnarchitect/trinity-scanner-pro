@@ -1,0 +1,40 @@
+name: Analyze Trinity Candidates
+
+on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 18 * * 1-5'  # 6 PM UTC = 1 PM EST Mon-Fri
+
+jobs:
+  analyze-trinity:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run comprehensive analysis
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python trinity_strategy/analyze_trinity_candidates.py
+
+      - name: Upload analysis results
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprehensive-analysis
+          path: comprehensive_analysis_*.json
+          retention-days: 7
+
+      - name: Create analysis summary
+        run: |
+          echo "## 📊 Trinity Analysis Results" >> $GITHUB_STEP_SUMMARY
+          echo "Analysis completed at $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "Check the artifacts tab for detailed results." >> $GITHUB_STEP_SUMMARY
