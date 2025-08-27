@@ -1,0 +1,77 @@
+name: Analyze Individual Stock
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: 'Stock ticker to analyze'
+        required: true
+        default: 'AAPL'
+        type: string
+      budget:
+        description: 'Trading budget'
+        required: false
+        default: '1600'
+        type: string
+
+jobs:
+  analyze-stock:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run individual stock analysis
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python -c "
+          from stock_analyzer import ComprehensiveStockAnalyzer
+          import json
+          import sys
+          
+          ticker = '${{ github.event.inputs.ticker }}'.upper()
+          budget = float('${{ github.event.inputs.budget }}')
+          
+          print(f'�� Analyzing {ticker} with budget ${budget}...')
+          
+          analyzer = ComprehensiveStockAnalyzer(budget=budget)
+          analysis = analyzer.analyze_stock(ticker)
+          
+          if 'error' in analysis:
+              print(f'❌ Error: {analysis[\"error\"]}')
+              sys.exit(1)
+          
+          # Print formatted analysis
+          analyzer.print_analysis(analysis)
+          
+          # Save to file
+          filename = f'analysis_{ticker}_{datetime.now().strftime(\"%Y%m%d_%H%M%S\")}.json'
+          with open(filename, 'w') as f:
+              json.dump(analysis, f, indent=2, default=str)
+          
+          print(f'✅ Analysis saved to {filename}')
+          "
+
+      - name: Upload analysis results
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-analysis-${{ github.event.inputs.ticker }}
+          path: analysis_*.json
+          retention-days: 7
+
+      - name: Create analysis summary
+        run: |
+          echo "## 📊 Individual Stock Analysis: ${{ github.event.inputs.ticker }}" >> $GITHUB_STEP_SUMMARY
+          echo "Analysis completed at $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "Budget: $${{ github.event.inputs.budget }}" >> $GITHUB_STEP_SUMMARY
+          echo "Check the artifacts tab for detailed results." >> $GITHUB_STEP_SUMMARY
