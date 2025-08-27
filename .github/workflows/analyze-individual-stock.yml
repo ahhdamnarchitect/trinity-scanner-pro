@@ -53,7 +53,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: stock-analysis-${{ github.event.inputs.ticker }}
-          path: individual_analysis_*.txt
+          path: |
+            trinity_strategy/individual_analysis_*.txt
+            trinity_strategy/analysis_*.json
           retention-days: 7
 
       - name: Create analysis summary
@@ -63,6 +65,6 @@ jobs:
           echo "Budget: $${{ github.event.inputs.budget }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Files generated:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Trading report (CSV format)" >> $GITHUB_STEP_SUMMARY
+          echo "- Conversational trading report (TXT format)" >> $GITHUB_STEP_SUMMARY
           echo "- Detailed analysis (JSON format)" >> $GITHUB_STEP_SUMMARY
           echo "Check the artifacts tab for results." >> $GITHUB_STEP_SUMMARY
