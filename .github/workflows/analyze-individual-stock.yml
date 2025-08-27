@@ -34,15 +34,18 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
+          cd trinity_strategy
           python -c "
+          import sys
+          sys.path.append('.')
           from stock_analyzer import ComprehensiveStockAnalyzer
           import json
-          import sys
+          from datetime import datetime
           
           ticker = '${{ github.event.inputs.ticker }}'.upper()
           budget = float('${{ github.event.inputs.budget }}')
           
-          print(f'�� Analyzing {ticker} with budget ${budget}...')
+          print(f' Analyzing {ticker} with budget ${budget}...')
           
           analyzer = ComprehensiveStockAnalyzer(budget=budget)
           analysis = analyzer.analyze_stock(ticker)
@@ -54,8 +57,8 @@ jobs:
           # Print formatted analysis
           analyzer.print_analysis(analysis)
           
-          # Save to file
-          filename = f'analysis_{ticker}_{datetime.now().strftime(\"%Y%m%d_%H%M%S\")}.json'
+          # Save to file (in parent directory for artifact upload)
+          filename = f'../analysis_{ticker}_{datetime.now().strftime(\"%Y%m%d_%H%M%S\")}.json'
           with open(filename, 'w') as f:
               json.dump(analysis, f, indent=2, default=str)
           
